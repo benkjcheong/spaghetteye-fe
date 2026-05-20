@@ -115,10 +115,14 @@ class AppState:
                 self._subscribers.remove(q)
 
     def set_frame(self, jpeg: bytes | None) -> None:
+        ts: float | None = None
         with self._lock:
             if jpeg:
                 self._frame_bytes = jpeg
                 self._frame_ts = time.time()
+                ts = self._frame_ts
+        if ts is not None:
+            self._broadcast({"type": "frame", "ts": ts})
 
     def frame(self) -> tuple[bytes | None, float | None]:
         with self._lock:

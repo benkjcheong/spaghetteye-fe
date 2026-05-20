@@ -16,7 +16,7 @@ class Config:
     tg_bot_token: str
     tg_chat_id: str
     log_level: str = "INFO"
-    spaghetti_interval_sec: float = 30.0
+    spaghetti_interval_sec: float = 5.0
     spaghetti_consecutive_hits: int = 2
     spaghetti_min_confidence: float = 0.85
     camera_library_path: str | None = None
@@ -65,7 +65,7 @@ def load_config(env_file: str | Path | None = None) -> Config:
         tg_bot_token=_require("TG_BOT_TOKEN"),
         tg_chat_id=_require("TG_CHAT_ID"),
         log_level=os.environ.get("LOG_LEVEL", "INFO").upper(),
-        spaghetti_interval_sec=_get_float("SPAGHETTI_INTERVAL_SEC", 30.0),
+        spaghetti_interval_sec=_get_float("SPAGHETTI_INTERVAL_SEC", 5.0),
         spaghetti_consecutive_hits=_get_int("SPAGHETTI_CONSECUTIVE_HITS", 2),
         spaghetti_min_confidence=_get_float("SPAGHETTI_MIN_CONFIDENCE", 0.85),
         camera_library_path=os.environ.get("CAMERA_LIBRARY_PATH", "").strip() or None,

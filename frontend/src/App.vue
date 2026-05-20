@@ -21,16 +21,12 @@ const frameError = ref(false);
 type StreamMessage =
   | { type: 'snapshot'; ts: number; data: Snapshot }
   | { type: 'detector'; ts: number; data: Detector }
+  | { type: 'frame'; ts: number }
   | { type: 'event'; ts: number; data: Record<string, unknown> };
-
-function tickFrame() {
-  frameSrc.value = `/api/frame.jpg?ts=${Date.now()}`;
-}
 
 // kept as a no-op shim so optimistic toggle code can still call it without effect.
 function tickSnapshot() {}
 
-let frameTimer: number | undefined;
 let es: EventSource | null = null;
 
 function connectStream() {
@@ -40,6 +36,7 @@ function connectStream() {
       const msg = JSON.parse(ev.data) as StreamMessage;
       if (msg.type === 'snapshot') snapshot.value = msg.data;
       else if (msg.type === 'detector') detector.value = msg.data;
+      else if (msg.type === 'frame') frameSrc.value = `/api/frame.jpg?ts=${msg.ts}`;
     } catch {}
   };
   es.onerror = () => {
@@ -51,11 +48,9 @@ function connectStream() {
 
 onMounted(() => {
   connectStream();
-  frameTimer = window.setInterval(tickFrame, 5000);
 });
 
 onUnmounted(() => {
-  if (frameTimer) clearInterval(frameTimer);
   es?.close();
 });
 
