@@ -8,7 +8,6 @@ type Snapshot = {
 };
 
 type Detector = {
-  enabled: boolean;
   last_confidence: number | null;
   alerted: boolean;
 };
@@ -76,17 +75,17 @@ const confidence = computed(() => {
   return c === null || c === undefined ? '—' : `${(c * 100).toFixed(1)}%`;
 });
 
-const stateMap: Record<string, { label: string; cls: string; dot: string }> = {
-  RUNNING: { label: 'Printing', cls: 'text-state-running ring-state-running/40 bg-state-running/10', dot: 'bg-state-running' },
-  PAUSE: { label: 'Paused', cls: 'text-state-pause ring-state-pause/40 bg-state-pause/10', dot: 'bg-state-pause' },
-  PREPARE: { label: 'Preparing', cls: 'text-state-finish ring-state-finish/40 bg-state-finish/10', dot: 'bg-state-finish' },
-  FINISH: { label: 'Finished', cls: 'text-state-finish ring-state-finish/40 bg-state-finish/10', dot: 'bg-state-finish' },
-  FAILED: { label: 'Failed', cls: 'text-state-fail ring-state-fail/40 bg-state-fail/10', dot: 'bg-state-fail' },
-  IDLE: { label: 'Idle', cls: 'text-text-muted ring-line bg-bg-tile', dot: 'bg-state-idle' },
+const stateMap: Record<string, { label: string; cls: string }> = {
+  RUNNING: { label: 'Printing', cls: 'text-state-running ring-state-running/40 bg-state-running/10' },
+  PAUSE: { label: 'Paused', cls: 'text-state-pause ring-state-pause/40 bg-state-pause/10' },
+  PREPARE: { label: 'Preparing', cls: 'text-state-finish ring-state-finish/40 bg-state-finish/10' },
+  FINISH: { label: 'Finished', cls: 'text-state-finish ring-state-finish/40 bg-state-finish/10' },
+  FAILED: { label: 'Failed', cls: 'text-state-fail ring-state-fail/40 bg-state-fail/10' },
+  IDLE: { label: 'Idle', cls: 'text-text-muted ring-line bg-bg-tile' },
 };
 
 const stateView = computed(
-  () => stateMap[state.value] ?? { label: state.value, cls: 'text-text-muted ring-line bg-bg-tile', dot: 'bg-state-idle' },
+  () => stateMap[state.value] ?? { label: state.value, cls: 'text-text-muted ring-line bg-bg-tile' },
 );
 </script>
 
@@ -98,7 +97,6 @@ const stateView = computed(
           <div class="text-xs uppercase tracking-wider text-text-muted">State</div>
           <div class="mt-2">
             <span class="pill px-3 py-1.5 text-sm" :class="stateView.cls">
-              <span class="inline-block w-1.5 h-1.5 rounded-full" :class="stateView.dot"></span>
               {{ stateView.label }}
             </span>
           </div>
@@ -106,12 +104,12 @@ const stateView = computed(
 
         <div>
           <div class="text-xs uppercase tracking-wider text-text-muted">File</div>
-          <div class="mt-2 font-mono text-2xl break-all">{{ file }}</div>
+          <div class="mt-2 font-mono text-xl break-all">{{ file }}</div>
         </div>
 
         <div>
           <div class="text-xs uppercase tracking-wider text-text-muted">ETA</div>
-          <div class="mt-2 font-mono text-3xl">{{ eta }}</div>
+          <div class="mt-2 font-mono text-xl">{{ eta }}</div>
         </div>
       </div>
     </aside>
@@ -133,32 +131,20 @@ const stateView = computed(
     <aside class="panel col-span-3 justify-between">
       <div class="space-y-6">
         <div>
-          <div class="text-xs uppercase tracking-wider text-text-muted">Spaghetti Detector</div>
+          <div class="text-xs uppercase tracking-wider text-text-muted">Alert</div>
           <div class="mt-2">
             <span
-              class="pill"
-              :class="detector?.enabled ? 'text-brand ring-brand/40 bg-brand-soft' : 'text-text-muted ring-line bg-bg-tile'"
+              class="pill px-3 py-1.5 text-sm"
+              :class="detector?.alerted ? 'text-state-fail ring-state-fail/40 bg-state-fail/10' : 'text-text-muted ring-line bg-bg-tile'"
             >
-              {{ detector?.enabled ? 'enabled' : 'disabled' }}
+              {{ detector?.alerted ? 'FIRED' : 'clear' }}
             </span>
           </div>
         </div>
 
         <div>
           <div class="text-xs uppercase tracking-wider text-text-muted">Confidence</div>
-          <div class="mt-2 font-mono text-5xl">{{ confidence }}</div>
-        </div>
-
-        <div>
-          <div class="text-xs uppercase tracking-wider text-text-muted">Alert</div>
-          <div class="mt-2">
-            <span
-              class="pill"
-              :class="detector?.alerted ? 'text-state-fail ring-state-fail/40 bg-state-fail/10' : 'text-text-muted ring-line bg-bg-tile'"
-            >
-              {{ detector?.alerted ? 'FIRED' : 'clear' }}
-            </span>
-          </div>
+          <div class="mt-2 font-mono text-xl">{{ confidence }}</div>
         </div>
       </div>
     </aside>

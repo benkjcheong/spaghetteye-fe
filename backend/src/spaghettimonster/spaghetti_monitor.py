@@ -68,21 +68,21 @@ class SpaghettiMonitor:
         with self._lock:
             snapshot = dict(self._snapshot)
 
+        try:
+            frame = self._camera.capture_frame()
+        except Exception as exc:
+            log.warning("camera capture failed: %s", exc)
+            frame = None
+
         now_active = snapshot.get("gcode_state") == "RUNNING"
         if not now_active:
             self._reset_state(now_active=False)
-            self._emit_tick(None, None)
+            self._emit_tick(frame, None)
             return
 
         if not self._active:
             self._reset_state(now_active=True)
 
-        try:
-            frame = self._camera.capture_frame()
-        except Exception as exc:
-            log.warning("camera capture failed: %s", exc)
-            self._emit_tick(None, None)
-            return
         if not frame:
             self._emit_tick(None, None)
             return

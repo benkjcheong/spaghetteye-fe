@@ -24,7 +24,7 @@ def run() -> int:
     log.info("starting spaghettimonster v1 (printer=%s)", cfg.printer_serial)
 
     app_state = AppState()
-    app_state.set_detector_enabled(cfg.spaghetti_ai_enabled)
+    app_state.set_detector_enabled(True)
 
     tracker = StateTracker()
     notifier = TelegramNotifier(cfg.tg_bot_token, cfg.tg_chat_id)
@@ -77,8 +77,6 @@ def run() -> int:
 
 
 def _build_spaghetti_monitor(cfg, notifier: TelegramNotifier, app_state: AppState) -> SpaghettiMonitor | None:
-    if not cfg.spaghetti_ai_enabled:
-        return None
     try:
         camera = BambuCameraClient(
             CameraConfig(

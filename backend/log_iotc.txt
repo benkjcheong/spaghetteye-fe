@@ -46,3 +46,6 @@
 [26-05-20 14:49:25.803449][D][1F67C58C0][IOTC] [IOTC_Check_Session_Status] Error: Not Initialized!
 [26-05-20 14:49:25.805663][D][1F67C58C0][IOTC] @@@@@ IOTC_DeInitialize called
 [26-05-20 14:49:25.805718][D][1F67C58C0][IOTC] @ErrCode -12 - Line (13010)
+[26-05-20 16:19:25.339555][D][16F52B000][IOTC] [IOTC_Check_Session_Status] Error: Not Initialized!
+[26-05-20 16:19:25.340236][D][16F52B000][IOTC] @@@@@ IOTC_DeInitialize called
+[26-05-20 16:19:25.340259][D][16F52B000][IOTC] @ErrCode -12 - Line (13010)
