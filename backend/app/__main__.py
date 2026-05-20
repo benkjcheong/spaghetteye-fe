@@ -4,7 +4,6 @@ import logging
 import os
 import signal
 import sys
-from dataclasses import asdict
 
 from .api import ApiServer, AppState, build_app
 from .camera_stream import BambuCameraClient, CameraConfig, CameraUnavailableError
@@ -24,7 +23,6 @@ def run() -> int:
     log.info("starting spaghettimonster v1 (printer=%s)", cfg.printer_serial)
 
     app_state = AppState()
-    app_state.set_detector_enabled(True)
 
     tracker = StateTracker()
     notifier = TelegramNotifier(cfg.tg_bot_token, cfg.tg_chat_id)

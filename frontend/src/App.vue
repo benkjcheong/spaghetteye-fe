@@ -75,18 +75,23 @@ const confidence = computed(() => {
   return c === null || c === undefined ? '—' : `${(c * 100).toFixed(1)}%`;
 });
 
-const stateMap: Record<string, { label: string; cls: string }> = {
-  RUNNING: { label: 'Printing', cls: 'text-state-running ring-state-running/40 bg-state-running/10' },
-  PAUSE: { label: 'Paused', cls: 'text-state-pause ring-state-pause/40 bg-state-pause/10' },
-  PREPARE: { label: 'Preparing', cls: 'text-state-finish ring-state-finish/40 bg-state-finish/10' },
-  FINISH: { label: 'Finished', cls: 'text-state-finish ring-state-finish/40 bg-state-finish/10' },
-  FAILED: { label: 'Failed', cls: 'text-state-fail ring-state-fail/40 bg-state-fail/10' },
-  IDLE: { label: 'Idle', cls: 'text-text-muted ring-line bg-bg-tile' },
+const GREEN_CLS = 'text-state-running ring-state-running/40 bg-state-running/10';
+const RED_CLS = 'text-state-fail ring-state-fail/40 bg-state-fail/10';
+const GREEN_STATES = new Set(['RUNNING', 'PREPARE', 'FINISH', 'IDLE']);
+
+const stateLabels: Record<string, string> = {
+  RUNNING: 'Printing',
+  PAUSE: 'Paused',
+  PREPARE: 'Preparing',
+  FINISH: 'Finished',
+  FAILED: 'Failed',
+  IDLE: 'Idle',
 };
 
-const stateView = computed(
-  () => stateMap[state.value] ?? { label: state.value, cls: 'text-text-muted ring-line bg-bg-tile' },
-);
+const stateView = computed(() => ({
+  label: stateLabels[state.value] ?? state.value,
+  cls: GREEN_STATES.has(state.value) ? GREEN_CLS : RED_CLS,
+}));
 </script>
 
 <template>
@@ -135,9 +140,9 @@ const stateView = computed(
           <div class="mt-2">
             <span
               class="pill px-3 py-1.5 text-sm"
-              :class="detector?.alerted ? 'text-state-fail ring-state-fail/40 bg-state-fail/10' : 'text-text-muted ring-line bg-bg-tile'"
+              :class="detector?.alerted ? RED_CLS : GREEN_CLS"
             >
-              {{ detector?.alerted ? 'FIRED' : 'clear' }}
+              {{ detector?.alerted ? 'Spaghetti detected' : 'No issues' }}
             </span>
           </div>
         </div>

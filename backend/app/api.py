@@ -34,7 +34,6 @@ class AppState:
         self._frame_bytes: bytes | None = None
         self._frame_ts: float | None = None
         self._detector: dict[str, Any] = {
-            "enabled": False,
             "last_tick_ts": None,
             "last_confidence": None,
             "last_summary": None,
@@ -45,10 +44,6 @@ class AppState:
 
     def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-
-    def set_detector_enabled(self, enabled: bool) -> None:
-        with self._lock:
-            self._detector["enabled"] = enabled
 
     def update_snapshot(self, snapshot: dict[str, Any]) -> None:
         with self._lock:

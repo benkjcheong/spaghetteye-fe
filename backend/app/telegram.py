@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import logging
 import time
 
@@ -77,23 +76,3 @@ class TelegramNotifier:
                 time.sleep(delay)
                 delay = min(delay * 2, 30)
         return False
-
-
-def _cli() -> int:
-    from .config import load_config, setup_logging
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--test", action="store_true", help="send a hello message")
-    parser.add_argument("--text", default="hello from spaghetti monster")
-    args = parser.parse_args()
-
-    cfg = load_config()
-    setup_logging(cfg.log_level)
-    notifier = TelegramNotifier(cfg.tg_bot_token, cfg.tg_chat_id)
-    ok = notifier.send(args.text)
-    print("sent" if ok else "FAILED")
-    return 0 if ok else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(_cli())
