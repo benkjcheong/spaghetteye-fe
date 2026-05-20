@@ -5,41 +5,31 @@ export default {
     extend: {
       colors: {
         bg: {
-          deep: '#0e1116',
-          panel: '#171b22',
-          tile: '#1f242d',
+          deep: '#ffffff',
+          panel: '#ffffff',
+          tile: '#f8fafc',
         },
-        line: '#2a313c',
+        line: '#e5e7eb',
         text: {
-          primary: '#f3f4f6',
-          muted: '#8a93a3',
+          primary: '#0f172a',
+          muted: '#64748b',
         },
         brand: {
           DEFAULT: '#00ae42',
-          soft: '#00ae4226',
+          soft: '#00ae4214',
         },
         state: {
           running: '#00ae42',
-          pause: '#f59e0b',
-          finish: '#3b82f6',
-          fail: '#ef4444',
-          idle: '#6b7280',
+          pause: '#d97706',
+          finish: '#2563eb',
+          fail: '#dc2626',
+          idle: '#94a3b8',
         },
-        hms: '#f59e0b',
-        spaghetti: '#d946ef',
+        spaghetti: '#c026d3',
       },
       fontFamily: {
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
-      },
-      boxShadow: {
-        tile: '0 1px 0 0 rgba(255,255,255,0.04) inset, 0 8px 24px -8px rgba(0,0,0,0.6)',
-      },
-      backgroundImage: {
-        grid: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
-      },
-      backgroundSize: {
-        grid: '32px 32px',
       },
     },
   },
