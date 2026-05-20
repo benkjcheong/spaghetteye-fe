@@ -92,6 +92,50 @@ const stateView = computed(() => ({
   label: stateLabels[state.value] ?? state.value,
   cls: GREEN_STATES.has(state.value) ? GREEN_CLS : RED_CLS,
 }));
+
+type Action = 'pause' | 'resume' | 'stop';
+
+const canPause = computed(() => state.value === 'RUNNING');
+const canResume = computed(() => state.value === 'PAUSE');
+const canStop = computed(() => state.value === 'RUNNING' || state.value === 'PAUSE');
+
+const confirmStop = ref(false);
+const toast = ref<{ msg: string; kind: 'ok' | 'err' } | null>(null);
+const sending = ref<Action | null>(null);
+let toastTimer: number | undefined;
+
+function showToast(msg: string, kind: 'ok' | 'err') {
+  toast.value = { msg, kind };
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => (toast.value = null), 3500);
+}
+
+async function sendControl(action: Action) {
+  sending.value = action;
+  try {
+    const r = await fetch(`/api/print/${action}`, { method: 'POST' });
+    const body = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (r.ok && body.ok) {
+      showToast(`${action} sent`, 'ok');
+      tickSnapshot();
+    } else {
+      showToast(`${action} failed: ${body.error ?? r.status}`, 'err');
+    }
+  } catch (e) {
+    showToast(`${action} error: ${(e as Error).message}`, 'err');
+  } finally {
+    sending.value = null;
+  }
+}
+
+function requestStop() {
+  confirmStop.value = true;
+}
+
+async function confirmStopYes() {
+  confirmStop.value = false;
+  await sendControl('stop');
+}
 </script>
 
 <template>
@@ -116,8 +160,70 @@ const stateView = computed(() => ({
           <div class="text-xs uppercase tracking-wider text-text-muted">ETA</div>
           <div class="mt-2 font-mono text-xl">{{ eta }}</div>
         </div>
+
+        <div>
+          <div class="text-xs uppercase tracking-wider text-text-muted">Control</div>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <button
+              class="pill px-3 py-1.5 text-sm ring-1 ring-line disabled:opacity-40 disabled:cursor-not-allowed hover:bg-bg-tile"
+              :disabled="!canPause || sending !== null"
+              @click="sendControl('pause')"
+            >
+              {{ sending === 'pause' ? '…' : 'Pause' }}
+            </button>
+            <button
+              class="pill px-3 py-1.5 text-sm ring-1 ring-line disabled:opacity-40 disabled:cursor-not-allowed hover:bg-bg-tile"
+              :disabled="!canResume || sending !== null"
+              @click="sendControl('resume')"
+            >
+              {{ sending === 'resume' ? '…' : 'Resume' }}
+            </button>
+            <button
+              class="pill px-3 py-1.5 text-sm ring-1 ring-state-fail/40 text-state-fail bg-state-fail/10 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-state-fail/20"
+              :disabled="!canStop || sending !== null"
+              @click="requestStop"
+            >
+              {{ sending === 'stop' ? '…' : 'Stop' }}
+            </button>
+          </div>
+        </div>
       </div>
     </aside>
+
+    <div
+      v-if="confirmStop"
+      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+      @click.self="confirmStop = false"
+    >
+      <div class="bg-white rounded-xl ring-1 ring-line p-6 max-w-sm shadow-xl">
+        <div class="text-lg font-semibold">Stop print?</div>
+        <div class="mt-2 text-sm text-text-muted">
+          This cancels the current print on the printer. The print cannot be resumed afterwards.
+        </div>
+        <div class="mt-5 flex justify-end gap-2">
+          <button
+            class="pill px-3 py-1.5 text-sm ring-1 ring-line hover:bg-bg-tile"
+            @click="confirmStop = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="pill px-3 py-1.5 text-sm ring-1 ring-state-fail/40 text-state-fail bg-state-fail/10 hover:bg-state-fail/20"
+            @click="confirmStopYes"
+          >
+            Stop print
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="toast"
+      class="fixed top-4 right-4 z-50 pill px-3 py-1.5 text-sm ring-1 shadow-md"
+      :class="toast.kind === 'ok' ? GREEN_CLS : RED_CLS"
+    >
+      {{ toast.msg }}
+    </div>
 
     <main class="col-span-6 flex">
       <div class="w-full h-full bg-bg-tile rounded-xl ring-1 ring-line overflow-hidden flex items-center justify-center">

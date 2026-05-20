@@ -7,9 +7,10 @@ import sys
 
 from .api import ApiServer, AppState, build_app
 from .camera_stream import BambuCameraClient, CameraConfig, CameraUnavailableError
-from .config import load_config, setup_logging
+from .config import Config, load_config, setup_logging
 from .failure_detector import DetectionError, LocalFailureDetector
 from .mqtt_client import build_client
+from .printer_control import PrinterControl
 from .spaghetti_monitor import SpaghettiMonitor
 from .state import StateTracker
 from .telegram import TelegramNotifier
@@ -26,7 +27,15 @@ def run() -> int:
 
     tracker = StateTracker()
     notifier = TelegramNotifier(cfg.tg_bot_token, cfg.tg_chat_id)
-    monitor = _build_spaghetti_monitor(cfg, notifier, app_state)
+
+    control_holder: dict[str, PrinterControl | None] = {"ctrl": None}
+
+    def auto_pause() -> None:
+        ctrl = control_holder["ctrl"]
+        if ctrl is not None:
+            ctrl.publish_command("pause", source="auto_pause")
+
+    monitor = _build_spaghetti_monitor(cfg, notifier, app_state, auto_pause)
 
     def handle_payload(payload):
         events = tracker.ingest(payload)
@@ -43,6 +52,10 @@ def run() -> int:
         access_code=cfg.access_code,
         on_payload=handle_payload,
     )
+
+    control = PrinterControl(client, cfg.printer_serial, app_state)
+    control_holder["ctrl"] = control
+    app_state.bind_control(control)
 
     api_host = os.environ.get("API_HOST", "0.0.0.0")
     api_port = int(os.environ.get("API_PORT", "8000"))
@@ -74,7 +87,12 @@ def run() -> int:
     return 0
 
 
-def _build_spaghetti_monitor(cfg, notifier: TelegramNotifier, app_state: AppState) -> SpaghettiMonitor | None:
+def _build_spaghetti_monitor(
+    cfg: Config,
+    notifier: TelegramNotifier,
+    app_state: AppState,
+    auto_pause,
+) -> SpaghettiMonitor | None:
     try:
         camera = BambuCameraClient(
             CameraConfig(
@@ -107,6 +125,8 @@ def _build_spaghetti_monitor(cfg, notifier: TelegramNotifier, app_state: AppStat
         min_confidence=cfg.spaghetti_min_confidence,
         consecutive_hits=cfg.spaghetti_consecutive_hits,
         on_tick=on_tick,
+        auto_pause=auto_pause,
+        auto_pause_enabled=cfg.auto_pause_on_spaghetti,
     )
 
 

@@ -20,6 +20,7 @@ class Detector(Protocol):
 
 AlertCallback = Callable[[Event, bytes | None], None]
 TickCallback = Callable[[bytes | None, Any, int, bool], None]
+AutoPauseCallback = Callable[[], None]
 
 
 class SpaghettiMonitor:
@@ -33,11 +34,15 @@ class SpaghettiMonitor:
         min_confidence: float = 0.85,
         consecutive_hits: int = 2,
         on_tick: TickCallback | None = None,
+        auto_pause: AutoPauseCallback | None = None,
+        auto_pause_enabled: bool = False,
     ) -> None:
         self._camera = camera
         self._detector = detector
         self._on_alert = on_alert
         self._on_tick = on_tick
+        self._auto_pause = auto_pause
+        self._auto_pause_enabled = auto_pause_enabled
         self._interval_sec = interval_sec
         self._min_confidence = min_confidence
         self._consecutive_hits_required = consecutive_hits
@@ -48,6 +53,7 @@ class SpaghettiMonitor:
         self._active = False
         self._consecutive_hits = 0
         self._alerted = False
+        self._auto_paused = False
 
     def start(self) -> None:
         if self._thread is not None:
@@ -116,6 +122,12 @@ class SpaghettiMonitor:
         )
         self._on_alert(event, frame)
         self._alerted = True
+        if self._auto_pause_enabled and self._auto_pause is not None and not self._auto_paused:
+            try:
+                self._auto_pause()
+                self._auto_paused = True
+            except Exception as exc:
+                log.warning("auto-pause failed: %s", exc)
 
     def _emit_tick(self, frame: bytes | None, result: Any) -> None:
         if self._on_tick is None:
@@ -134,6 +146,7 @@ class SpaghettiMonitor:
         self._active = now_active
         self._consecutive_hits = 0
         self._alerted = False
+        self._auto_paused = False
 
     @staticmethod
     def _maybe_int(value: Any) -> int | None:

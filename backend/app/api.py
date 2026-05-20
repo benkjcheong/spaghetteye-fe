@@ -12,10 +12,11 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from .events import Event
 from .failure_detector import DetectionResult
+from .printer_control import VALID_ACTIONS, PrinterControl
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class AppState:
             "consecutive_hits": 0,
             "alerted": False,
         }
+        self._control: PrinterControl | None = None
 
     def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
@@ -110,6 +112,14 @@ class AppState:
         with self._lock:
             return dict(self._detector)
 
+    def bind_control(self, ctrl: PrinterControl) -> None:
+        with self._lock:
+            self._control = ctrl
+
+    def control(self) -> PrinterControl | None:
+        with self._lock:
+            return self._control
+
 
 def build_app(state: AppState) -> FastAPI:
     app = FastAPI(title="App API", version="0.1.0")
@@ -150,6 +160,24 @@ def build_app(state: AppState) -> FastAPI:
         if ts is not None:
             headers["X-Frame-Timestamp"] = f"{ts:.3f}"
         return Response(content=jpeg, media_type="image/jpeg", headers=headers)
+
+    @app.post("/api/print/{action}")
+    def print_control(action: str) -> Response:
+        if action not in VALID_ACTIONS:
+            return JSONResponse({"ok": False, "error": "bad_action"}, status_code=400)
+        ctrl = state.control()
+        if ctrl is None or not ctrl.is_connected():
+            return JSONResponse({"ok": False, "error": "mqtt_disconnected"}, status_code=503)
+        snap = state.snapshot()
+        gcode = str(snap.get("gcode_state") or "").upper()
+        allowed = {"pause": {"RUNNING"}, "resume": {"PAUSE"}, "stop": {"RUNNING", "PAUSE"}}
+        if gcode not in allowed[action]:
+            return JSONResponse(
+                {"ok": False, "error": "bad_state", "gcode_state": gcode},
+                status_code=409,
+            )
+        ok, seq = ctrl.publish_command(action, source="api")
+        return JSONResponse({"ok": ok, "sequence_id": seq}, status_code=200 if ok else 502)
 
     @app.get("/api/stream")
     async def stream() -> StreamingResponse:

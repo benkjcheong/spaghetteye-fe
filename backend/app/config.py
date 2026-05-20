@@ -23,6 +23,7 @@ class Config:
     spaghetti_model_path: str | None = None
     spaghetti_model_url: str = "https://tsd-pub-static.s3.amazonaws.com/ml-models/model-weights-5a6b1be1fa.onnx"
     spaghetti_detection_threshold: float = 0.08
+    auto_pause_on_spaghetti: bool = False
 
 
 def _get_int(key: str, default: int) -> int:
@@ -37,6 +38,13 @@ def _get_float(key: str, default: float) -> float:
     if val is None or not val.strip():
         return default
     return float(val)
+
+
+def _get_bool(key: str, default: bool) -> bool:
+    val = os.environ.get(key)
+    if val is None or not val.strip():
+        return default
+    return val.strip().lower() in ("1", "true", "yes", "on")
 
 
 def _require(key: str) -> str:
@@ -67,6 +75,7 @@ def load_config(env_file: str | Path | None = None) -> Config:
             or "https://tsd-pub-static.s3.amazonaws.com/ml-models/model-weights-5a6b1be1fa.onnx"
         ),
         spaghetti_detection_threshold=_get_float("SPAGHETTI_DETECTION_THRESHOLD", 0.08),
+        auto_pause_on_spaghetti=_get_bool("AUTO_PAUSE_ON_SPAGHETTI", False),
     )
 
 
