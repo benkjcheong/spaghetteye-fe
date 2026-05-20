@@ -19,6 +19,7 @@ class Detector(Protocol):
 
 
 AlertCallback = Callable[[Event, bytes | None], None]
+TickCallback = Callable[[bytes | None, Any, int, bool], None]
 
 
 class SpaghettiMonitor:
@@ -31,10 +32,12 @@ class SpaghettiMonitor:
         interval_sec: float = 30.0,
         min_confidence: float = 0.85,
         consecutive_hits: int = 2,
+        on_tick: TickCallback | None = None,
     ) -> None:
         self._camera = camera
         self._detector = detector
         self._on_alert = on_alert
+        self._on_tick = on_tick
         self._interval_sec = interval_sec
         self._min_confidence = min_confidence
         self._consecutive_hits_required = consecutive_hits
@@ -68,6 +71,7 @@ class SpaghettiMonitor:
         now_active = snapshot.get("gcode_state") == "RUNNING"
         if not now_active:
             self._reset_state(now_active=False)
+            self._emit_tick(None, None)
             return
 
         if not self._active:
@@ -77,21 +81,26 @@ class SpaghettiMonitor:
             frame = self._camera.capture_frame()
         except Exception as exc:
             log.warning("camera capture failed: %s", exc)
+            self._emit_tick(None, None)
             return
         if not frame:
+            self._emit_tick(None, None)
             return
 
         try:
             result = self._detector.detect(frame)
         except Exception as exc:
             log.warning("spaghetti detection failed: %s", exc)
+            self._emit_tick(frame, None)
             return
 
         if not result.failure_detected or result.confidence < self._min_confidence:
             self._consecutive_hits = 0
+            self._emit_tick(frame, result)
             return
 
         self._consecutive_hits += 1
+        self._emit_tick(frame, result)
         if self._alerted or self._consecutive_hits < self._consecutive_hits_required:
             return
 
@@ -107,6 +116,14 @@ class SpaghettiMonitor:
         )
         self._on_alert(event, frame)
         self._alerted = True
+
+    def _emit_tick(self, frame: bytes | None, result: Any) -> None:
+        if self._on_tick is None:
+            return
+        try:
+            self._on_tick(frame, result, self._consecutive_hits, self._alerted)
+        except Exception as exc:
+            log.debug("on_tick callback failed: %s", exc)
 
     def _run(self) -> None:
         while not self._stop_event.is_set():

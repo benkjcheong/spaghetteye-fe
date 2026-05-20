@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import logging
+import os
 import signal
 import sys
+from dataclasses import asdict
 
+from .api import ApiServer, AppState, build_app
 from .camera_stream import BambuCameraClient, CameraConfig, CameraUnavailableError
 from .config import load_config, setup_logging
 from .failure_detector import DetectionError, LocalFailureDetector
@@ -20,14 +23,19 @@ def run() -> int:
     setup_logging(cfg.log_level)
     log.info("starting spaghettimonster v1 (printer=%s)", cfg.printer_serial)
 
+    app_state = AppState()
+    app_state.set_detector_enabled(cfg.spaghetti_ai_enabled)
+
     tracker = StateTracker()
     notifier = TelegramNotifier(cfg.tg_bot_token, cfg.tg_chat_id)
-    monitor = _build_spaghetti_monitor(cfg, notifier)
+    monitor = _build_spaghetti_monitor(cfg, notifier, app_state)
 
     def handle_payload(payload):
         events = tracker.ingest(payload)
+        app_state.update_snapshot(tracker.snapshot)
         for ev in events:
             _deliver_monitor_event(notifier, ev, None)
+            app_state.push_event(ev)
         if monitor is not None:
             monitor.update_snapshot(tracker.snapshot)
 
@@ -37,6 +45,13 @@ def run() -> int:
         access_code=cfg.access_code,
         on_payload=handle_payload,
     )
+
+    api_host = os.environ.get("API_HOST", "0.0.0.0")
+    api_port = int(os.environ.get("API_PORT", "8000"))
+    api_server = ApiServer(build_app(app_state), host=api_host, port=api_port)
+    api_server.start()
+    log.info("api server listening on %s:%d", api_host, api_port)
+
     if monitor is not None:
         monitor.start()
 
@@ -44,6 +59,7 @@ def run() -> int:
         log.info("shutting down")
         if monitor is not None:
             monitor.stop()
+        api_server.stop()
         client.disconnect()
         client.loop_stop()
         sys.exit(0)
@@ -56,10 +72,11 @@ def run() -> int:
     finally:
         if monitor is not None:
             monitor.stop()
+        api_server.stop()
     return 0
 
 
-def _build_spaghetti_monitor(cfg, notifier: TelegramNotifier) -> SpaghettiMonitor | None:
+def _build_spaghetti_monitor(cfg, notifier: TelegramNotifier, app_state: AppState) -> SpaghettiMonitor | None:
     if not cfg.spaghetti_ai_enabled:
         return None
     try:
@@ -81,21 +98,30 @@ def _build_spaghetti_monitor(cfg, notifier: TelegramNotifier) -> SpaghettiMonito
     except DetectionError as exc:
         log.warning("AI monitoring disabled: %s", exc)
         return None
+
+    def on_tick(frame, result, consecutive_hits, alerted):
+        app_state.set_frame(frame)
+        app_state.update_detection(result, consecutive_hits, alerted)
+
     return SpaghettiMonitor(
         camera,
         detector,
-        lambda event, image: _deliver_monitor_event(notifier, event, image),
+        lambda event, image: _deliver_monitor_event(notifier, event, image, app_state),
         interval_sec=cfg.spaghetti_interval_sec,
         min_confidence=cfg.spaghetti_min_confidence,
         consecutive_hits=cfg.spaghetti_consecutive_hits,
+        on_tick=on_tick,
     )
 
 
-def _deliver_monitor_event(notifier: TelegramNotifier, event, image_bytes) -> None:
+def _deliver_monitor_event(notifier: TelegramNotifier, event, image_bytes, app_state: AppState | None = None) -> None:
     log.info("event: %s — %s", event.kind, event.title)
     ok = notifier.send_photo(image_bytes, event.format()) if image_bytes else notifier.send(event.format())
     if not ok:
         log.error("failed to deliver event: %s", event.kind)
+    if app_state is not None:
+        app_state.set_frame(image_bytes)
+        app_state.push_event(event)
 
 
 if __name__ == "__main__":

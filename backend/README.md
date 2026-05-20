@@ -3,6 +3,17 @@
 source .venv/bin/activate
 python -m spaghettimonster
 
+The daemon now also runs an HTTP API on `0.0.0.0:8000` for the frontend:
+
+- `GET /api/health`
+- `GET /api/snapshot` — merged printer state
+- `GET /api/events?limit=N` — recent events (ring buffer, max 200)
+- `GET /api/stream` — Server-Sent Events of live events
+- `GET /api/frame.jpg` — last captured camera frame
+- `GET /api/detector` — AI detector status
+
+Override host/port with `API_HOST` / `API_PORT` env vars.
+
 Optional AI spaghetti detection:
 
 - Requires Bambu Studio installed locally so `libBambuSource.dylib` is present.
